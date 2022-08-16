@@ -1,5 +1,5 @@
 
-## Q1: Most Profitable Companies
+## Q1a: Most Profitable Companies
 Find the 3 most profitable companies in the entire world.
 Output the result along with the corresponding company name.
 Sort the result based on profits in descending order.
@@ -27,7 +27,7 @@ df = forbes_global_2010_2014.sort_values(by='profits', ascending=False)
 df.head(3)[['company', 'profits']]
 ```
 
-## Q2: Finding User Purchases
+## Q1b: Finding User Purchases
 Write a query that'll identify returning active users. 
 A returning active user is a user that has made a second purchase within 7 days of any other of their purchases. 
 Output a list of user_ids of these returning active users.
@@ -62,7 +62,7 @@ df['difference'] = df.groupby('user_id')['created_at'].diff()
 df[df['difference'] <= pd.Timedelta(days=7)]['user_id'].drop_duplicates()
 ```
 
-## Q3. Highest Cost Orders
+## Q1c. Highest Cost Orders
 Find the customer with the highest daily total order cost between 2019-02-01 to 2019-05-01. 
 If customer had more than one order on a certain day, sum the order costs on daily basis. 
 Output customer's first name, total cost of their items, and the date.
@@ -101,3 +101,6 @@ max_idx = df['total_order_cost'].idxmax()
 
 # convert the row to column 
 pd.DataFrame(df.iloc[max_idx]).T
+```
+
+
