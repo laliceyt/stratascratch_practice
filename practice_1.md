@@ -103,4 +103,120 @@ max_idx = df['total_order_cost'].idxmax()
 pd.DataFrame(df.iloc[max_idx]).T
 ```
 
+## Q2a. Highest Target Under Manager
+Find the highest target achieved by the employee or employees who works under the manager id 13. 
+Output the first name of the employee and target achieved. 
+The solution should show the highest target achieved under manager_id=13 and which employee(s) achieved it.
 
+### SQL
+``` sql
+WITH mgr AS
+(SELECT
+  *
+from salesforce_employees
+WHERE manager_id = 13)
+
+SELECT 
+  first_name,
+  target
+FROM mgr
+WHERE target = (SELECT MAX(target) FROM mgr);
+```
+
+### Python
+
+``` python
+import pandas as pd
+
+# check if anyone is under more than 1 manager
+result = salesforce_employees[['id', 'manager_id']].groupby(by='id').count() > 1
+result.sum()
+
+# filter those under manager id 13 and get names of the highest target (can be more than 1)
+salesforce_employees[salesforce_employees['manager_id'] == 13].nlargest(1, 'target', keep='all').loc[:, ['first_name', 'target']]
+```
+
+## Q2b. Classify Business Type
+Classify each business as either a restaurant, cafe, school, or other. 
+A restaurant should have the word 'restaurant' in the business name. 
+For cafes, either 'cafe', 'café', or 'coffee' can be in the business name. 
+'School' should be in the business name for schools. All other businesses should be classified as 'other'. 
+Output the business name and the calculated classification.
+
+
+### SQL
+``` sql
+SELECT 
+  DISTINCT business_name,
+  CASE 
+    WHEN LOWER(business_name) LIKE '%restaurant%' THEN 'restaurant'
+    WHEN LOWER(business_name) ~ 'caf(e|é)|coffee' THEN 'cafe'
+    WHEN LOWER(business_name) LIKE '%school%' THEN 'school'
+    ELSE 'other' END AS business_type
+FROM sf_restaurant_health_violations
+ORDER BY business_type, business_name
+```
+
+
+### Python
+
+``` python
+import pandas as pd
+import re
+
+def category(name):
+    l_name = name.lower()
+    if 'school' in l_name:
+        return 'school'
+    elif 'restaurant' in l_name:
+        return 'restaurant'
+    elif re.search('(caf(e|é)|coffee)', l_name):
+        return 'cafe'
+    else:
+        return 'other'
+        
+sf_restaurant_health_violations['business_type'] = sf_restaurant_health_violations['business_name'].apply(category)
+sf_restaurant_health_violations[['business_name', 'business_type']].sort_values(by=['business_type', 'business_name']).drop_duplicates()
+```
+
+## Q2c. Acceptance Rate By Date
+What is the overall friend acceptance rate by date?
+Your output should have the rate of acceptances by the date the request was sent. 
+Order by the earliest date to latest.
+
+### SQL
+```sql
+SELECT
+  a.date,
+  SUM(CASE WHEN b.action = 'accepted' THEN 1 ELSE 0 END)
+  /SUM(CASE WHEN a.action = 'sent' THEN 1 ELSE 0 END)::decimal as percentage_acceptance
+FROM fb_friend_requests a
+LEFT JOIN fb_friend_requests b
+ON a.user_id_sender = b.user_id_sender AND a.user_id_receiver = b.user_id_receiver AND a.date <> b.date
+WHERE a.action = 'sent'
+GROUP BY a.date;
+```
+
+### Python
+```python
+import pandas as pd
+
+# filter by actions
+send_df = fb_friend_requests[fb_friend_requests['action'] == 'sent']
+accept_df = fb_friend_requests[fb_friend_requests['action'] == 'accepted']
+
+# left join
+df = send_df.merge(
+    accept_df, on=['user_id_sender', 'user_id_receiver'], how='left')
+
+# group by date
+df = df[['date_x', 'action_x', 'action_y']].groupby('date_x').count().reset_index()
+
+# get rate
+df['acceptance_rate'] = df['action_y'] / df['action_x']
+
+# format date
+df['date'] = pd.to_datetime(df['date_x']).dt.date
+
+df[['date', 'acceptance_rate']]
+```
