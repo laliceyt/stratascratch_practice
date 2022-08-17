@@ -220,3 +220,117 @@ df['date'] = pd.to_datetime(df['date_x']).dt.date
 
 df[['date', 'acceptance_rate']]
 ```
+## Q3a. Highest Energy Consumption
+Find the date with the highest total energy consumption from the Meta/Facebook data centers. 
+Output the date along with the total energy consumption across all data centers.
+
+### SQL
+```sql
+WITH total AS
+(
+  SELECT 
+    *
+  FROM fb_eu_energy eu
+UNION ALL
+  SELECT 
+    *
+  FROM fb_asia_energy asia
+UNION ALL
+  SELECT 
+    *
+  FROM fb_na_energy na),
+  sum_table AS (
+SELECT 
+  date,
+  SUM(consumption) AS total_energy
+FROM total
+GROUP BY date)
+
+SELECT * FROM sum_table
+WHERE total_energy = (SELECT MAX(total_energy) FROM sum_table);
+```
+
+### Python
+
+``` python
+
+import pandas as pd
+
+# joining all three tables and sum them by date.
+df = pd.concat([fb_eu_energy,fb_asia_energy,fb_na_energy]).groupby('date').sum().reset_index()
+
+# convert datetime to date
+df['date'] = pd.to_datetime(df['date'])
+df['date'] = df['date'].dt.date
+df
+
+# find max
+df.nlargest(1, 'consumption')[['date', 'consumption']]
+```
+
+## Q3b. Number of violations
+You're given a dataset of health inspections. 
+Count the number of violation in an inspection in 'Roxanne Cafe' for each year. 
+If an inspection resulted in a violation, there will be a value in the 'violation_id' column. Output the number of violations by year in ascending order.
+
+### SQL
+```sql
+SELECT
+  EXTRACT(YEAR FROM inspection_date) as year,
+  SUM(CASE WHEN violation_id is null THEN 0
+  ELSE 1 END) AS n_inspections
+FROM sf_restaurant_health_violations
+WHERE business_name = 'Roxanne Cafe'
+GROUP BY business_name, year
+ORDER BY year;
+```
+
+### Python
+
+``` python
+import pandas as pd
+
+# filter for roxanne cafe and violation_id that are not null
+df = sf_restaurant_health_violations.loc[
+    (sf_restaurant_health_violations['business_name'] == 'Roxanne Cafe') & (sf_restaurant_health_violations['violation_id'].notnull())]
+
+# convert datetime to year
+df['inspection_date'] = pd.to_datetime(df['inspection_date'])
+df['inspection_date'] = df['inspection_date'].dt.year
+
+# group by year and count no. of violations. Reset index
+df.groupby(by=['inspection_date'])['violation_id'].count().reset_index()
+```
+
+## Q3c. Customer Revenue In March
+Calculate the total revenue from each customer in March 2019. 
+Include only customers who were active in March 2019.
+
+### SQL
+```sql
+SELECT
+  cust_id,
+  SUM(total_order_cost) as revenue
+from orders 
+WHERE order_date >= '2019-03-01' and order_date < '2019-04-01'
+GROUP BY cust_id
+ORDER BY revenue DESC;
+```
+
+### Python
+
+``` python
+import pandas as pd
+
+# filter for active customers in Mar 2019
+df = orders.loc[(orders['order_date'] >= '2019-03-01') & (orders['order_date'] < '2019-04-01')]
+
+# group id and sum up order cost
+df = df.groupby(by='cust_id')['total_order_cost'].sum().reset_index()
+
+#rename total_order_cost column to revenue
+df = df.rename(columns={'total_order_cost': 'revenue'})
+
+# sort results by total_order_cost in desc
+df.sort_values(by='revenue', ascending=False)
+
