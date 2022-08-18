@@ -333,4 +333,86 @@ df = df.rename(columns={'total_order_cost': 'revenue'})
 
 # sort results by total_order_cost in desc
 df.sort_values(by='revenue', ascending=False)
+```
 
+## Q4a. Find all wineries which produce wines by possessing aromas of plum, cherry, rose, or hazelnut. 
+To make it more simple, look only for singular form of the mentioned aromas.
+Output unique winery values only.
+
+### SQL
+
+```sql
+select DISTINCT winery from winemag_p1
+WHERE lower(description) ~ '[[:<:]](plum|cherry|rose|hazelnut)[[:>:]]'
+ORDER BY winery
+```
+
+### Python
+
+``` python
+
+import pandas as pd
+import re
+
+# filter using regex 
+df = winemag_p1[winemag_p1.description.str.contains(r'\b(plum|cherry|rose|hazelnut)\b', flags =re.IGNORECASE, regex='True')]
+
+# remove duplicates
+df = df.drop_duplicates()
+
+df['winery'].sort_values()
+```
+
+## Q4b. Users By Average Session Time
+Calculate each user's average session time. 
+A session is defined as the time difference between a page_load and page_exit. 
+For simplicity, assume a user has only 1 session per day and if there are multiple of the same events on that day, consider only the latest page_load and earliest page_exit. 
+Output the user_id and their average session time.
+
+### SQL
+
+```sql
+SELECT
+  user_id,
+  AVG(diff) as difference
+FROM
+(SELECT
+  pl.user_id,
+  date(pl.timestamp) as date,
+  MIN(px.timestamp) - MAX(pl.timestamp) AS diff
+from facebook_web_log pl
+JOIN facebook_web_log px
+ON pl.user_id = px.user_id AND date(pl.timestamp)  = date(px.timestamp) 
+WHERE pl.action='page_load' AND px.action='page_exit'
+GROUP BY pl.user_id, date) a
+GROUP BY user_id;
+```
+
+### Python
+
+``` python
+
+import pandas as pd
+
+#convert datetime to date
+facebook_web_log['timestamp'] = pd.to_datetime(facebook_web_log['timestamp'])
+
+facebook_web_log['date'] = facebook_web_log['timestamp'].dt.date
+
+# # group data by user id and date and find max timestamp for page load
+df_page_load = facebook_web_log.loc[facebook_web_log['action'] == 'page_load']
+df_page_load = df_page_load.groupby(['user_id', 'date', 'action'], as_index=False)['timestamp'].max()
+
+# group data by user_id and date and find min page_exit
+df_page_exit = facebook_web_log.loc[facebook_web_log['action'] == 'page_exit']
+df_page_exit = df_page_exit.groupby(['user_id', 'date', 'action'], as_index=False)['timestamp'].min()
+
+# merge both tables on user id and date
+df = df_page_load.merge(df_page_exit, on=['user_id', 'date'])
+
+# get difference in time btw page load max time and page exit min time
+df['difference'] = df['timestamp_y'] - df['timestamp_x']
+df['difference'] =df["difference"].dt.seconds
+
+# get average time
+df.groupby("user_id", as_index=False)["difference"].mean()
