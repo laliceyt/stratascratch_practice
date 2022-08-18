@@ -415,4 +415,4 @@ df['difference'] = df['timestamp_y'] - df['timestamp_x']
 df['difference'] =df["difference"].dt.seconds
 
 # get average time
-df.groupby("user_id", as_index=False)["difference"].mean()
+df.groupby("user_id", as_index=False)['difference'].mean()
