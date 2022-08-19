@@ -416,3 +416,115 @@ df['difference'] =df["difference"].dt.seconds
 
 # get average time
 df.groupby("user_id", as_index=False)['difference'].mean()
+```
+
+## Q5a. Reviews of Categories
+Find the top business categories based on the total number of reviews. 
+Output the category along with the total number of reviews. 
+Order by total reviews in descending order.
+
+### SQL
+```sql 
+select 
+  regexp_split_to_table(categories, ';') AS cat,
+  SUM(review_count) as review_cnt
+FROM yelp_business
+GROUP BY cat
+ORDER BY review_cnt DESC;
+```
+
+### Python
+```
+import pandas as pd
+
+# create a dict to store values
+business_counter = {}
+
+# function to split the categories and then add the categories and count in business_counter
+def split_cat(cat, cnt):
+    list = cat.split(';')
+    for each in list:
+        if each in business_counter:
+            business_counter[each]+= cnt
+        else:
+            business_counter[each] = cnt
+    
+yelp_business[['categories', 'review_count']].apply(lambda x: split_cat(x[0], x[1]), axis=1)
+
+# create a df from the business_counter dictionary
+df = pd.DataFrame([business_counter.keys(), business_counter.values()]).T
+
+df.columns = ['categories', 'total_reviews']
+df.sort_values(by='total_reviews', ascending=False)
+```
+
+> A better alternative (from the stratascratch) uses the built-in function explode to transform each element of a list-like to a row
+
+import pandas as pd
+``` python
+yelp_business['categories'] = yelp_business['categories'].str.split(';')
+df = yelp_business[['categories', 'review_count']].explode('categories')
+
+df.groupby('categories', as_index=False)['review_count'].sum().sort_values('review_count', ascending=False)
+```
+
+## Q5b. Highest Salary In Department
+Find the employee with the highest salary per department.
+Output the department name, employee's first name along with the corresponding salary.
+
+### SQL
+```sql 
+SELECT
+  department,
+  first_name AS employee_name,
+  salary
+FROM employee 
+WHERE (department, salary) IN
+(select 
+  department,
+  MAX(salary)
+from employee
+GROUP BY department)
+```
+
+### Python
+```python
+
+import pandas as pd
+
+# get max salary by dept
+max_dsalary = employee.groupby('department', as_index=False)['salary'].max()
+
+# merge two df
+df = pd.merge(max_dsalary, employee, how='inner', on=['department', 'salary'])
+
+df.loc[:,['department', 'first_name', 'salary']].sort_values(by='salary', ascending=False)
+```
+
+## Q5c. Find the top 10 ranked songs in 2010
+What were the top 10 ranked songs in 2010?
+Output the rank, group name, and song name but do not show the same song twice.
+Sort the result based on the year_rank in ascending order.
+
+### SQL
+```sql
+select DISTINCT 
+  year_rank AS rank,
+  group_name,
+  song_name
+from billboard_top_100_year_end
+WHERE year = 2010
+ORDER BY year_rank
+LIMIT 10;
+```
+
+### Python
+``` python
+import pandas as pd
+
+# filter based on year
+df = billboard_top_100_year_end[billboard_top_100_year_end['year'] == 2010]
+
+# remove duplicates and get the top 10 smallest values for year_rank
+df[['year_rank', 'group_name', 'song_name']].drop_duplicates().nsmallest(10, 'year_rank')
+```
