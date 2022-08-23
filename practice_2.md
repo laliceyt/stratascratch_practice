@@ -118,3 +118,99 @@ import pandas as pd
 # filter out the reviews with max. no. of cool votes and show business name and review text.
 yelp_reviews.loc[yelp_reviews.cool == yelp_reviews.cool.max(), ['business_name', 'review_text']]
 ```
+
+## Q2a: Premium vs Freemium
+Find the total number of downloads for paying and non-paying users by date. Include only records where non-paying customers have more downloads than paying customers. The output should be sorted by earliest date first and contain 3 columns date, non-paying downloads, paying downloads.
+
+### SQL
+``` sql
+SELECT * 
+FROM (select 
+  date,
+  SUM(CASE WHEN paying_customer = 'no' THEN downloads ELSE 0 END) AS non_paying,
+  SUM(CASE WHEN paying_customer = 'yes' THEN downloads ELSE 0 END) AS paying
+FROM ms_user_dimension u
+JOIN ms_acc_dimension a
+ON u.acc_id = a.acc_id
+JOIN ms_download_facts dl
+ON dl.user_id = u.user_id
+GROUP BY date) t
+WHERE non_paying > paying
+ORDER BY date;
+```
+
+### Python
+``` python
+import pandas as pd
+
+# merge all three tables
+df = ms_user_dimension.merge(ms_acc_dimension).merge(ms_download_facts)
+
+# reshape the data based on column values from paying customer.
+df = df.groupby(['date', 'paying_customer'], as_index=False)['downloads'].sum()
+df = df.pivot(index='date', columns='paying_customer', values='downloads').reset_index()
+
+# filter out records of non-paying customers > than paying customers
+df[df['no'] > df['yes']]
+```
+
+## Q2b: Find the rate of processed tickets for each type
+Find the rate of processed tickets for each type.
+
+### SQL
+``` sql
+select 
+  type,
+  SUM(CASE WHEN processed THEN 1
+  ELSE 0 END)::float/ COUNT(complaint_id) as processed_rate
+from facebook_complaints 
+GROUP BY type;
+```
+
+### Python
+``` python
+import pandas as pd
+
+# Group the data by type and get mean value of processed column
+df = facebook_complaints.groupby('type', as_index=False)['processed'].mean()
+
+# rename columns 
+df.rename({'processed': 'processed_rate'})
+df
+```
+
+## Q2c: Popularity Percentage
+Find the popularity percentage for each user on Meta/Facebook. The popularity percentage is defined as the total number of friends the user has divided by the total number of users on the platform, then converted into a percentage by multiplying by 100.
+Output each user along with their popularity percentage. Order records in ascending order by user id.
+The 'user1' and 'user2' column are pairs of friends.
+
+### SQL
+``` sql
+WITH total AS
+(select 
+  user1, user2
+from facebook_friends l1
+UNION
+select 
+  user2, user1
+from facebook_friends l2)
+
+SELECT
+  user1,
+  CAST(COUNT(user2) AS FLOAT)/(SELECT COUNT(DISTINCT user1) FROM total) * 100 AS popularity_percent
+FROM total
+GROUP BY user1
+ORDER BY user1;
+```
+
+### Python
+``` python
+import pandas as pd
+
+df = facebook_friends.copy()
+df.columns = ['user2', 'user1']
+df = pd.concat([facebook_friends, df])
+df = df.groupby('user1', as_index=False)['user2'].count()
+df['count'] = df['user2']/len(df)*100
+df['count'] 
+```
