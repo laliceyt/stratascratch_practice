@@ -214,3 +214,58 @@ df = df.groupby('user1', as_index=False)['user2'].count()
 df['count'] = df['user2']/len(df)*100
 df['count'] 
 ```
+
+## Q3a: Counting Instances in Text
+Find the number of times the words 'bull' and 'bear' occur in the contents. We're counting the number of times the words occur so words like 'bullish' should not be included in our count.
+Output the word 'bull' and 'bear' along with the corresponding number of occurrences.
+
+### SQL
+``` sql
+SELECT 
+  'bull' AS word,
+  COUNT(*) FROM (SELECT regexp_matches(contents, '[[:<:]]bull[[:>:]]', 'g') AS nentry
+FROM google_file_store) a
+UNION 
+SELECT 
+  'bear' AS word,
+  COUNT(*) FROM (SELECT regexp_matches(contents, '[[:<:]]bear[[:>:]]', 'g') AS nentry
+FROM google_file_store) b
+ORDER BY word DESC
+```
+
+### Python
+``` python
+
+import pandas as pd
+import re
+
+pd.DataFrame({'word': ['bull', 'bear'],
+    'netry': 
+        [
+            len(google_file_store['contents'].str.extractall(r'(\bbull\b)')),
+            len(google_file_store['contents'].str.extractall(r'(\bbear\b)'))
+        ]
+})
+```
+## Q3b: Find matching hosts and guests in a way that they are both of the same gender and nationality
+Find matching hosts and guests pairs in a way that they are both of the same gender and nationality.
+Output the host id and the guest id of matched pair.
+
+### SQL
+``` sql
+select
+  DISTINCT host_id,
+  guest_id
+from airbnb_hosts h, airbnb_guests g
+WHERE h.gender = g.gender AND h.nationality = g.nationality;
+```
+
+### Python
+``` python
+
+import pandas as pd
+
+df = pd.merge(airbnb_hosts, airbnb_guests, on=['nationality', 'gender']).drop_duplicates()
+
+df[['host_id', 'guest_id']]
+```
