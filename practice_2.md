@@ -269,3 +269,55 @@ df = pd.merge(airbnb_hosts, airbnb_guests, on=['nationality', 'gender']).drop_du
 
 df[['host_id', 'guest_id']]
 ```
+
+## Q4a: Monthly Percentage Difference
+Given a table of purchases by date, calculate the month-over-month percentage change in revenue. The output should include the year-month date (YYYY-MM) and percentage change, rounded to the 2nd decimal point, and sorted from the beginning of the year to the end of the year.
+The percentage change column will be populated from the 2nd month forward and can be calculated as ((this month's revenue - last month's revenue) / last month's revenue)*100
+
+### SQL
+``` sql
+SELECT 
+  year_month, 
+  ROUND((current - previous)/previous* 100,2) AS revenue_diff_pct
+FROM
+(select 
+  to_char(created_at, 'YYYY-MM') AS year_month,
+  SUM(value) AS current,
+  LAG(SUM(value), 1) OVER (ORDER BY to_char(created_at, 'YYYY-MM')) AS previous
+from sf_transactions
+GROUP BY 1)a
+```
+
+### Python
+``` python
+import pandas as pd
+import datetime
+
+sf_transactions['created_at'] = pd.to_datetime(sf_transactions['created_at'])
+
+# Get month and year data
+sf_transactions['year_month'] = sf_transactions['created_at'].dt.to_period('M')
+
+# Get aggregated value by month
+df = sf_transactions.groupby('year_month', as_index=False)['value'].sum()
+
+df = df.rename(columns={'value': 'curr_revenue'})
+
+# Get previous month's value
+df['prev_revenue'] = df['curr_revenue'].shift(1)
+
+# Calculate percentage change
+df['revenue_diff_pct'] = round((df['curr_revenue']-df['prev_revenue']) / df['prev_revenue']*100,2)
+
+df[['year_month', 'revenue_diff_pct']]
+```
+> There is a shorter and cleaner solution from stratascratch:
+
+```python
+import pandas as pd
+
+# Start writing code
+sf_transactions.head()
+res = sf_transactions.set_index('created_at')['value'].resample('M').sum().pct_change()*100
+res.round(2).to_period().reset_index()
+```
