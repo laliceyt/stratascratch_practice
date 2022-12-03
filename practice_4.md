@@ -62,3 +62,34 @@ excluded_users = list(rc_calls[(rc_calls.date.dt.month == 4) & (rc_calls.date.dt
 # exclude the list of users above. Get users who didn't make calls during the period and filter for those with free status
 rc_users[~rc_users.user_id.isin(excluded_users) & (rc_users.status == 'free')].user_id
 ```
+## Q2a. First Three Most Watched Videos
+After a new user creates an account and starts watching videos, the user ID, video ID, and date watched are captured in the database. Find the top 3 videos most users have watched as their first 3 videos. Output the video ID and the number of times it has been watched as the users' first 3 videos.
+
+
+In the event of a tie, output all the videos in the top 3 that users watched as their first 3 videos.
+
+### SQL
+```sql
+WITH agg_func
+AS (SELECT
+  video_id,
+  COUNT(user_id) AS counter
+FROM (SELECT
+  *,
+  ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY watched_at) AS ranking
+FROM videos_watched) temp
+WHERE ranking <= 3
+GROUP BY video_id
+ORDER BY counter DESC),
+func_2
+AS (SELECT
+  video_id,
+  DENSE_RANK() OVER (ORDER BY counter DESC) AS ranking,
+  counter
+FROM agg_func)
+SELECT
+  video_id,
+  counter AS n_in_first_3
+FROM func_2
+WHERE ranking <= 3;
+```
