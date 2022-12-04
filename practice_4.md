@@ -53,7 +53,7 @@ ORDER BY user_id;
 ```
 
 ### Python
-```
+```python
 rc_calls.date= pd.to_datetime(rc_calls.date)
 
 # get list of users who made calls in 04-2020
@@ -92,4 +92,22 @@ SELECT
   counter AS n_in_first_3
 FROM func_2
 WHERE ranking <= 3;
+```
+
+### Python
+```python
+# rank the first three videos for each user based on watched time.
+videos_watched['watching_order'] = videos_watched.groupby('user_id')['watched_at'].rank()
+videos_watched = videos_watched.sort_values(by=['user_id', 'watching_order'])
+videos_watched = videos_watched[videos_watched['watching_order'] <=3]
+temp_df = videos_watched.groupby('video_id')['user_id'].count().reset_index()
+
+# Create another dataframe from all the videos that users have watched as their first 3 videos
+temp_df.columns = ['video_id', 'count'] 
+
+# Rank the videos based on dense rank
+temp_df['rank'] = temp_df['count'].rank(method='dense', ascending=False)
+temp_df = temp_df.rename(columns={'count': 'n_in_first_3'})
+# filter videos that are ranked top 3 
+temp_df.loc[temp_df['rank'] <= 3, ['video_id', 'n_in_first_3']]
 ```
