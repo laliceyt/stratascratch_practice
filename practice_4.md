@@ -111,3 +111,34 @@ temp_df = temp_df.rename(columns={'count': 'n_in_first_3'})
 # filter videos that are ranked top 3 
 temp_df.loc[temp_df['rank'] <= 3, ['video_id', 'n_in_first_3']]
 ```
+
+## Q3a. Actual vs Predicted Arrival Time
+Calculate the 90th percentile difference between Actual and Predicted arrival time in minutes for all completed trips within the first 14 days of 2022.
+
+### SQL
+```sql
+SELECT
+  diff AS ninetieth_percentile 
+FROM
+  (
+    SELECT
+      NTILE(9) OVER ( 
+    ORDER BY
+      diff) AS percentile1,
+      diff 
+    FROM
+      (
+        SELECT
+          ABS(TIMESTAMPDIFF(MINUTE, predicted_eta, actual_time_of_arrival)) AS diff 
+        FROM
+          trip_details 
+        WHERE
+          status = 'completed' 
+          AND actual_time_of_arrival BETWEEN '2022-01-01' AND '2022-01-14' 
+      )
+      a 
+  )
+  b 
+WHERE
+  percentile1 = 9 LIMIT 1
+```
