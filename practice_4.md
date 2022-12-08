@@ -142,3 +142,16 @@ FROM
 WHERE
   percentile1 = 9 LIMIT 1
 ```
+### Python
+```python
+
+# filter out by date and status
+trip_details = trip_details[(trip_details['status'] == 'completed') & (trip_details['actual_time_of_arrival'] <= '14-01-2022') & 
+(trip_details['actual_time_of_arrival'] >= '01-01-2022')]
+
+# time diff in absolute figure and get difference in minutes
+trip_details['difference_pred'] = abs(trip_details['actual_time_of_arrival'] - trip_details['predicted_eta'])/60
+
+# find 90th percentile
+trip_details['difference_pred'].quantile(0.9)
+```
