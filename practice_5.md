@@ -47,3 +47,19 @@ books_df['total_sales'] = books_df['total_sales'].fillna(0)
 
 books_df[['book_id', 'total_sales']]
 ```
+
+## Q1b. Post Likes
+You are given a list of posts of a Facebook user. Find the average number of likes.
+
+### SQL
+```sql 
+SELECT
+  AVG(no_of_likes) AS AVG 
+FROM
+  fb_posts;
+```
+
+### Python
+```python
+fb_posts['no_of_likes'].mean()
+```
