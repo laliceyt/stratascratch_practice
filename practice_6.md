@@ -77,3 +77,50 @@ df['rank_order'] = df['total_order_cost'].rank(method='dense')
 # filter out the person ranked 3rd
 df[df['rank_order'] == 3][['id', 'first_name', 'last_name']]
 ```
+
+## Q1b. Top 3 Restaurants of 2022
+
+Christmas is quickly approaching, and the DoorDash team anticipates an increase in sales. In order to predict the busiest restaurants, they want to identify the top three restaurants by ID in terms of sales in 2022.
+
+The output should include the restaurant IDs as well as their corresponding sales.
+
+### SQL
+```sql 
+WITH agg_table
+AS (SELECT
+  restaurant_id,
+  SUM(sales_amount) sales,
+  RANK() OVER (ORDER BY SUM(sales_amount) DESC) ranking
+FROM order_value_dd o
+JOIN delivery_orders d
+  ON o.delivery_id = d.delivery_id
+WHERE YEAR(order_placed_time) = 2022
+GROUP BY restaurant_id)
+
+SELECT
+  restaurant_id,
+  sales
+FROM agg_table
+WHERE ranking <= 3;
+```
+
+### Python
+``` python
+# merge two df
+df = order_value_dd.merge(delivery_orders)
+
+# filter out 2022 orders 
+df = df[df['order_placed_time'].dt.year == 2022]
+
+# agg sales values by restaurant_id
+agg_df = df.groupby('restaurant_id', as_index=False)['sales_amount'].sum().sort_values(by='sales_amount', ascending=False)
+
+# get rank info based on sales figures
+agg_df['ranking'] = agg_df['sales_amount'].rank(method='dense', ascending=False)
+agg_df_filtered = agg_df[agg_df['ranking'] <=3].loc[:, ['restaurant_id', 'sales_amount']]
+
+# rename column sales_amount to sales
+agg_df_filtered.columns = ['restaurant_id', 'sales']
+
+agg_df_filtered
+```
